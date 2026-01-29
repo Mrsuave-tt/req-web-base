@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
@@ -15,7 +15,12 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,9 +31,11 @@ export function LoginForm() {
       // Check for default admin account
       if (username === "IT" && password === "Avmc@123") {
         // Store session in both localStorage and cookie
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("username", username);
-        localStorage.setItem("isAdmin", "true");
+        if (typeof window !== 'undefined') {
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("username", username);
+          localStorage.setItem("isAdmin", "true");
+        }
         
         // Set cookie for middleware verification
         document.cookie = "isLoggedIn=true; path=/; max-age=86400"; // 24 hours
@@ -52,9 +59,11 @@ export function LoginForm() {
       const user = snapshot.docs[0].data();
       if (user.password === password) {
         // Store session
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("username", username);
-        localStorage.setItem("isAdmin", "false");
+        if (typeof window !== 'undefined') {
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("username", username);
+          localStorage.setItem("isAdmin", "false");
+        }
         
         // Set cookie for middleware verification
         document.cookie = "isLoggedIn=true; path=/; max-age=86400"; // 24 hours

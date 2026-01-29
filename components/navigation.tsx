@@ -20,18 +20,23 @@ export function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
-    setMounted(true);
-    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
-    setIsLoggedIn(loggedIn);
+    if (typeof window !== 'undefined') {
+      setMounted(true);
+      const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+      setIsLoggedIn(loggedIn);
+      setIsAdmin(localStorage.getItem("isAdmin") === "true" || localStorage.getItem("username") === "IT");
+    }
   }, []);
 
-  const isAdmin = localStorage.getItem("isAdmin") === "true" || localStorage.getItem("username") === "IT";
-
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("username");
-    localStorage.removeItem("isAdmin");
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("isLoggedIn");
+      localStorage.removeItem("username");
+      localStorage.removeItem("isAdmin");
+    }
     document.cookie = "isLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     router.push("/login");
   };
