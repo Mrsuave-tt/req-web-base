@@ -2,13 +2,13 @@ import { initializeApp, getApps } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDpCefiqNNVz9Cg7kUvD45anMKj1KM3exY",
-  authDomain: "webbase-be6e0.firebaseapp.com",
-  projectId: "webbase-be6e0",
-  storageBucket: "webbase-be6e0.firebasestorage.app",
-  messagingSenderId: "828665946644",
-  appId: "1:828665946644:web:15f9e180bd84af44783d01",
-  measurementId: "G-PMDDQH8R71"
+  apiKey: "AIzaSyC0Fpao_VJDMMfc9A20RXv3q0jRP9Lkt5U",
+  authDomain: "csrpha-rf.firebaseapp.com",
+  projectId: "csrpha-rf",
+  storageBucket: "csrpha-rf.firebasestorage.app",
+  messagingSenderId: "596517188878",
+  appId: "1:596517188878:web:3b5769c0bad44902cc535f",
+  measurementId: "G-X7EY9QVT72"
 };
 
 // Initialize Firebase (prevent duplicate initialization)

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query, deleteDoc, doc, addDoc } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +14,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Trash2, Package, Plus, Upload } from "lucide-react";
+import { Loader2, Trash2, Package, Plus, Upload, Edit, Save } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import type { Item } from "@/lib/types";
 
@@ -24,6 +27,8 @@ export function ItemsList() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const fetchItems = async () => {
     try {
@@ -55,6 +60,29 @@ export function ItemsList() {
       setDeleting(null);
     }
   }, [items]);
+
+  const handleEdit = useCallback((item: Item) => {
+    setEditingItem(item);
+    setShowEditModal(true);
+  }, []);
+
+  const handleUpdateItem = useCallback(async (updatedData: Partial<Item>) => {
+    if (!editingItem) return;
+    
+    try {
+      await updateDoc(doc(db, "items", editingItem.id), updatedData);
+      setItems(items.map(item => 
+        item.id === editingItem.id 
+          ? { ...item, ...updatedData }
+          : item
+      ));
+      setShowEditModal(false);
+      setEditingItem(null);
+    } catch (error) {
+      console.error("Error updating item:", error);
+      alert("Failed to update item");
+    }
+  }, [editingItem, items]);
 
   const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -281,19 +309,29 @@ export function ItemsList() {
                       }).format(item.unitPrice)}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(item.id)}
-                        disabled={deleting === item.id}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        {deleting === item.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                      </Button>
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deleting === item.id}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          {deleting === item.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -302,6 +340,131 @@ export function ItemsList() {
           </div>
         )}
       </CardContent>
+      
+      {/* Edit Modal */}
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle>Edit Item</CardTitle>
+              <CardDescription>
+                Update the item information
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EditItemForm 
+                item={editingItem} 
+                onUpdate={handleUpdateItem}
+                onCancel={() => {
+                  setShowEditModal(false);
+                  setEditingItem(null);
+                }}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </Card>
+  );
+}
+
+// Edit Item Form Component
+function EditItemForm({ 
+  item, 
+  onUpdate, 
+  onCancel 
+}: { 
+  item: Item; 
+  onUpdate: (data: Partial<Item>) => void; 
+  onCancel: () => void;
+}) {
+  const [formData, setFormData] = useState({
+    itemName: item.itemName,
+    unitOfMeasure: item.unitOfMeasure,
+    description: item.description || "",
+    unitPrice: item.unitPrice.toString(),
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await onUpdate({
+        itemName: formData.itemName,
+        unitOfMeasure: formData.unitOfMeasure,
+        description: formData.description,
+        unitPrice: parseFloat(formData.unitPrice),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="editItemName">Item Name</Label>
+        <Input
+          id="editItemName"
+          value={formData.itemName}
+          onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="editUnitOfMeasure">Unit of Measure</Label>
+        <Input
+          id="editUnitOfMeasure"
+          value={formData.unitOfMeasure}
+          onChange={(e) => setFormData({ ...formData, unitOfMeasure: e.target.value })}
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="editDescription">Item Description</Label>
+        <Textarea
+          id="editDescription"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          rows={3}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="editUnitPrice">Unit Price</Label>
+        <Input
+          id="editUnitPrice"
+          type="number"
+          step="0.01"
+          min="0"
+          value={formData.unitPrice}
+          onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
+          required
+        />
+      </div>
+
+      <div className="flex gap-3">
+        <Button type="submit" disabled={loading} className="flex-1">
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Updating...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Update Item
+            </>
+          )}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }

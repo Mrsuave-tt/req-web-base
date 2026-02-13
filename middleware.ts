@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Redirect to login if not logged in and trying to access protected routes
-  if (!isLoggedIn && pathname !== "/login" && pathname !== "/") {
+  if (!isLoggedIn && pathname !== "/login") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

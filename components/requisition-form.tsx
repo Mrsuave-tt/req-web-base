@@ -48,6 +48,7 @@ export function RequisitionForm() {
   const [showArchived, setShowArchived] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingRequisitionId, setEditingRequisitionId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
     requestDate: new Date().toISOString().split("T")[0],
@@ -95,15 +96,14 @@ export function RequisitionForm() {
     try {
       const q = query(collection(db, "requisitions"), orderBy("createdAt", "desc"), limit(1));
       const snapshot = await getDocs(q);
-      
       if (snapshot.empty) {
-        return `FL.RF.01`;
+        return `RF.01`;
       }
       const lastReq = snapshot.docs[0].data();
-      const lastNumber = parseInt(lastReq.requisitionNumber.split(".")[2]) || 0;
-      return `FL.RF.${String(lastNumber + 1).padStart(2, "0")}`;
+      const lastNumber = parseInt(lastReq.requisitionNumber.split(".")[1]) || 0;
+      return `RF.${String(lastNumber + 1).padStart(2, "0")}`;
     } catch {
-      return `FL.RF.01`;
+      return `RF.01`;
     }
   };
 
@@ -299,6 +299,15 @@ export function RequisitionForm() {
     });
   };
 
+  // Filter items based on search term
+  const filteredItems = useMemo(() => {
+    if (!searchTerm) return availableItems;
+    return availableItems.filter(item => 
+      item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.itemId.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [availableItems, searchTerm]);
+
   // Show printable view after submission
   if (view === "print" && submittedRequisition) {
     const printTotalAmount = submittedRequisition.items.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -370,8 +379,13 @@ export function RequisitionForm() {
             </div>
           </div>
           
-          <div className="text-center mb-3">
+          <div className="mb-3" style={{display: "flex", justifyContent: "center", alignItems: "flex-end"}}>
             <h1 style={{fontSize: "16pt", fontWeight: "bold", marginBottom: "4px"}}>Requisition Form</h1>
+          </div>
+          <div className="text-right mb-3">
+            <p style={{fontSize: "10pt", color: "#666", marginBottom: "2px"}}>
+              Printed: {new Date().toLocaleString()}
+            </p>
             <p style={{fontSize: "13pt", fontWeight: "bold", color: "#0066cc", marginBottom: "0"}}>
               {submittedRequisition.requisitionNumber}
             </p>
@@ -402,8 +416,12 @@ export function RequisitionForm() {
             <thead>
               <tr style={{backgroundColor: "#e0e0e0"}}>
                 <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", width: "40px", textAlign: "center"}}>Qty</th>
+                <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", width: "80px", textAlign: "center"}}>Date of Last Delivery</th>
+                <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", width: "80px", textAlign: "center"}}>Quantity Delivered</th>
+                <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", width: "70px", textAlign: "center"}}>Stock-on Hand</th>
+                <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", width: "80px", textAlign: "center"}}>Ave.Monthly Consumption</th>
                 <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", width: "50px", textAlign: "center"}}>UOM</th>
-                <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", textAlign: "left"}}>Description</th>
+                <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", textAlign: "left"}}>Item Name and Description</th>
                 <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", width: "80px", textAlign: "right"}}>Unit Price</th>
                 <th style={{border: "1px solid #000", padding: "4px", fontWeight: "bold", width: "80px", textAlign: "center"}}>Total Price</th>
               </tr>
@@ -412,6 +430,10 @@ export function RequisitionForm() {
               {submittedRequisition.items.map((item, index) => (
                 <tr key={index}>
                   <td style={{border: "1px solid #000", padding: "4px", textAlign: "center"}}>{item.quantity}</td>
+                  <td style={{border: "1px solid #000", padding: "4px", textAlign: "center"}}></td>
+                  <td style={{border: "1px solid #000", padding: "4px", textAlign: "center"}}></td>
+                  <td style={{border: "1px solid #000", padding: "4px", textAlign: "center"}}></td>
+                  <td style={{border: "1px solid #000", padding: "4px", textAlign: "center"}}></td>
                   <td style={{border: "1px solid #000", padding: "4px", textAlign: "center"}}>{item.unitOfMeasure}</td>
                   <td style={{border: "1px solid #000", padding: "4px"}}>
                     <div style={{fontWeight: "500"}}>{item.itemName}</div>
@@ -420,12 +442,12 @@ export function RequisitionForm() {
                     )}
                   </td>
                   <td style={{border: "1px solid #000", padding: "4px", textAlign: "right"}}>{formatCurrency(item.unitPrice)}</td>
-                  <td style={{border: "1px solid #000", padding: "4px", textAlign: "right"}}>{formatCurrency(item.totalPrice)}</td>
+                  <td style={{border: "1px solid #000", padding: "4px", textAlign: "center"}}>{formatCurrency(item.totalPrice)}</td>
                 </tr>
               ))}
               <tr style={{backgroundColor: "#f0f0f0", fontWeight: "bold"}}>
-                <td colSpan={4} style={{border: "1px solid #000", padding: "4px", textAlign: "right"}}>Grand Total:</td>
-                <td style={{border: "1px solid #000", padding: "4px", textAlign: "right", fontWeight: "bold"}}>
+                <td colSpan={8} style={{border: "1px solid #000", padding: "4px", textAlign: "right"}}>Grand Total:</td>
+                <td style={{border: "1px solid #000", padding: "4px", textAlign: "center", fontWeight: "bold"}}>
                   {formatCurrency(printTotalAmount)}
                 </td>
               </tr>
@@ -707,6 +729,17 @@ export function RequisitionForm() {
           {/* Add Items Section */}
           <div className="space-y-4">
             <Label className="text-base font-semibold">Add Items</Label>
+            
+            {/* Search Bar */}
+            <div className="relative">
+              <Input
+                placeholder="Search items by name or ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
                 <Select value={selectedItemId} onValueChange={setSelectedItemId}>
@@ -714,7 +747,7 @@ export function RequisitionForm() {
                     <SelectValue placeholder={itemsLoading ? "Loading items..." : "Select an item"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableItems.map((item) => (
+                    {filteredItems.map((item) => (
                       <SelectItem key={item.id} value={item.id}>
                         {item.itemId} - {item.itemName} ({formatCurrency(item.unitPrice)})
                       </SelectItem>
@@ -739,15 +772,15 @@ export function RequisitionForm() {
           </div>
 
           {/* Items Table */}
-          <div className="rounded-lg border overflow-hidden">
-            <Table>
+          <div className="rounded-lg border overflow-x-auto">
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">Qty</TableHead>
-                  <TableHead className="font-semibold">UOM</TableHead>
-                  <TableHead className="font-semibold">Description</TableHead>
-                  <TableHead className="font-semibold text-right">Unit Price</TableHead>
-                  <TableHead className="font-semibold text-right">Total Price</TableHead>
+                  <TableHead className="font-semibold w-[80px]">Qty</TableHead>
+                  <TableHead className="font-semibold w-[100px]">UOM</TableHead>
+                  <TableHead className="font-semibold min-w-[200px]">Description</TableHead>
+                  <TableHead className="font-semibold text-right w-[120px]">Unit Price</TableHead>
+                  <TableHead className="font-semibold text-right w-[120px]">Total Price</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -762,18 +795,18 @@ export function RequisitionForm() {
                   <>
                     {requisitionItems.map((item, index) => (
                       <TableRow key={index}>
-                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell className="font-medium">{item.quantity}</TableCell>
                         <TableCell>{item.unitOfMeasure}</TableCell>
                         <TableCell>
-                          <div>
-                            <span className="font-medium">{item.itemName}</span>
+                          <div className="space-y-1">
+                            <div className="font-medium">{item.itemName}</div>
                             {item.description && (
-                              <p className="text-sm text-muted-foreground">{item.description}</p>
+                              <div className="text-sm text-muted-foreground">{item.description}</div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-right font-medium">{formatCurrency(item.unitPrice)}</TableCell>
+                        <TableCell className="text-right font-semibold">
                           {formatCurrency(item.totalPrice)}
                         </TableCell>
                         <TableCell>
@@ -789,8 +822,8 @@ export function RequisitionForm() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    <TableRow className="bg-muted/30">
-                      <TableCell colSpan={4} className="text-right font-semibold">
+                    <TableRow className="bg-muted/30 font-semibold">
+                      <TableCell colSpan={4} className="text-right">
                         Grand Total:
                       </TableCell>
                       <TableCell className="text-right font-bold text-lg">
